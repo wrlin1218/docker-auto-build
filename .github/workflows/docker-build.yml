@@ -1,0 +1,107 @@
+name: Build and Push Docker Images
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 每天0:00 UTC运行
+  workflow_dispatch:  # 保留手动触发功能
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Install yq
+        run: |
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+          sudo apt-get update && sudo apt-get install -y jq  # 使用apt安装jq
+
+      - name: Clone repositories
+        run: |
+          for i in $(seq 0 $(($(yq '.repositories | length' config.yaml) - 1))); do
+            repo_dir="dockerfiles/$(yq ".repositories[$i].name" config.yaml)"
+            git clone $(yq ".repositories[$i].repo_url" config.yaml) $repo_dir
+          done
+
+      - name: Download releases
+        run: |
+          for i in $(seq 0 $(($(yq '.repositories | length' config.yaml) - 1))); do
+            repo_dir="dockerfiles/$(yq ".repositories[$i].name" config.yaml)"
+            repo_url=$(yq ".repositories[$i].repo_url" config.yaml)
+            owner=$(echo "$repo_url" | sed -n 's#https://github.com/\([^/]*\)/\([^/]*\)\.git#\1#p')
+            repo=$(echo "$repo_url" | sed -n 's#https://github.com/\([^/]*\)/\([^/]*\)\.git#\2#p')
+            
+            latest_tag=$(curl -s "https://api.github.com/repos/${owner}/${repo}/releases/latest" | jq -r '.tag_name')
+            curl -L -o "$repo_dir/${repo}.tar.gz" \
+              "https://github.com/${owner}/${repo}/releases/download/$latest_tag/${repo}-x86_64-unknown-linux-musl.tar.gz"
+            tar xzf "$repo_dir/${repo}.tar.gz" -C "$repo_dir"
+          done
+
+      - name: Build and push images
+        run: |
+          for i in $(seq 0 $(($(yq '.repositories | length' config.yaml) - 1))); do
+            name=$(yq ".repositories[$i].name" config.yaml)
+            repo_url=$(yq ".repositories[$i].repo_url" config.yaml)
+            branch=$(yq ".repositories[$i].branch" config.yaml)
+            
+            if [ -z "$repo_url" ] || [ "$repo_url" == "null" ]; then
+              echo "Error: repo_url is empty for $name"
+              exit 1
+            fi
+            
+            if [ -z "$branch" ] || [ "$branch" == "null" ]; then
+              branch="master"
+            fi
+            dockerfile="./dockerfiles/$name/Dockerfile"
+            image_name="${{ secrets.DOCKERHUB_USERNAME }}/$name"
+            
+            echo "Processing $name..."
+            
+            # 创建临时目录
+            work_dir="temp/$name"
+            mkdir -p "$work_dir"
+            
+            # 克隆代码仓库
+            git clone --branch "$branch" "$repo_url" "$work_dir"
+            
+            # 构建参数
+            build_args=""
+            if echo "$repo" | yq '.build_args' - | grep -q .; then
+              echo "Processing build args..."
+              while IFS= read -r line; do
+                if [[ -n "$line" ]]; then
+                  key=$(echo "$line" | cut -d: -f1)
+                  value=$(echo "$line" | cut -d: -f2- | sed 's/^[[:space:]]//')
+                  echo "Adding build arg: $key=$value"
+                  build_args="$build_args --build-arg $key=$value"
+                fi
+              done < <(echo "$repo" | yq '.build_args | to_entries | .[] | .key + ": " + .value' -)
+              echo "Final build args: $build_args"
+            fi
+            
+            # 构建并推送镜像
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              $build_args \
+              -t "$image_name:latest" \
+              -t "$image_name:$(date +%Y%m%d)" \
+              -f "$dockerfile" \
+              "$work_dir" \
+              --push
+            
+            echo "Successfully built and pushed $image_name"
+          done <<< "$repos"

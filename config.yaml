@@ -1,0 +1,5 @@
+# 需要自动构建的Docker镜像配置
+repositories:
+  - name: realm
+    repo_url: https://github.com/zhboner/realm.git
+    branch: master
