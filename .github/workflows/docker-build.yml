@@ -33,7 +33,12 @@ jobs:
       - name: Clone repositories
         run: |
           for i in $(seq 0 $(($(yq '.repositories | length' config.yaml) - 1))); do
-            repo_dir="dockerfiles/$(yq ".repositories[$i].name/repo" config.yaml)"
+            name=$(yq ".repositories[$i].name" config.yaml)
+            repo_dir="dockerfiles/$name/repo"
+
+            echo "$repo_dir"
+            mkdir -p "$repo_dir"
+
             git clone $(yq ".repositories[$i].repo_url" config.yaml) $repo_dir
             ls -l "$repo_dir"
           done
@@ -44,6 +49,7 @@ jobs:
             # 修改目录结构为 dockerfiles/name/release
             name=$(yq ".repositories[$i].name" config.yaml)
             release_dir="dockerfiles/$name/release"
+            echo "$release_dir"
             mkdir -p "$release_dir"
             
             repo_url=$(yq ".repositories[$i].repo_url" config.yaml)
