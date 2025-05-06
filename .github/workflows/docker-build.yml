@@ -90,16 +90,15 @@ jobs:
               echo "Processing build args..."
               while IFS= read -r line; do
                 if [[ -n "$line" ]]; then
-                  if [[ -n "$line" ]]; then
-                    local key=$(echo "$line" | cut -d: -f1 | xargs) 
-                    local value=$(echo "$line" | cut -d: -f2- | sed 's/^[[:space:]]*//' | xargs) 
-                    if [ -z "$key" ]; then
-                        echo "Warning: Skipping build arg with empty key from line: '$line' for $name"
-                        continue 
-                    fi
-          
-                    echo "Adding build arg: $key=$value"
-                    build_args="$build_args --build-arg $key=$value"
+                  local key=$(echo "$line" | cut -d: -f1 | xargs) 
+                  local value=$(echo "$line" | cut -d: -f2- | sed 's/^[[:space:]]*//' | xargs) 
+                  if [ -z "$key" ]; then
+                      echo "Warning: Skipping build arg with empty key from line: '$line' for $name"
+                      continue 
+                  fi
+        
+                  echo "Adding build arg $key=$value"
+                  build_args="$build_args --build-arg $key=$value"
                 fi
               done < <(echo "$repo" | yq '.build_args | to_entries | .[] | .key + ": " + .value' -)
               echo "Final build args: $build_args"
