@@ -56,12 +56,30 @@ jobs:
             owner=$(echo "$repo_url" | sed -n 's#https://github.com/\([^/]*\)/\([^/]*\)\.git#\1#p')
             repo=$(echo "$repo_url" | sed -n 's#https://github.com/\([^/]*\)/\([^/]*\)\.git#\2#p')
             
-            latest_tag=$(curl -s "https://api.github.com/repos/${owner}/${repo}/releases/latest" | jq -r '.tag_name')
-            curl -L -o "$release_dir/${repo}.tar.gz" \
-              "https://github.com/${owner}/${repo}/releases/download/$latest_tag/${repo}-x86_64-unknown-linux-musl.tar.gz"
+            # 获取配置中的release_name，如果未配置则使用默认格式
+            release_name=$(yq ".repositories[$i].release_name" config.yaml)
+            if [ "$release_name" == "null" ]; then
+              echo "错误：$name 未配置 release_name，跳过下载"
+              continue
+            fi
+            
+            # 获取最新release的信息
+            latest_release=$(curl -s "https://api.github.com/repos/${owner}/${repo}/releases/latest")
+            latest_tag=$(echo "$latest_release" | jq -r '.tag_name')
+            
+            # 从assets中查找匹配release_name的文件
+            download_url=$(echo "$latest_release" | jq -r --arg name "$release_name" '.assets[] | select(.name | contains($name)) | .browser_download_url')
+            
+            if [ -z "$download_url" ]; then
+              echo "错误：未找到匹配 $release_name 的资源，跳过下载"
+              continue
+            fi
+            
+            echo "下载 $download_url 到 $release_dir/${release_name}"
+            curl -L -o "$release_dir/${release_name}" "$download_url"
             
             # 确保解压后的文件名正确
-            tar xzf "$release_dir/${repo}.tar.gz" -C "$release_dir"
+            tar xzf "$release_dir/${release_name}" -C "$release_dir"
             echo "解压后的文件列表："
             ls -l "$release_dir"
           done
