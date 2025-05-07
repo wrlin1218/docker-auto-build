@@ -1,0 +1,22 @@
+services:
+  reality:
+    image: wrlin1218/reality:latest
+    container_name: reality
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    ports:
+      - "38443:443"
+    environment:
+      - DEST=www.apple.com:443 # 目标站点，默认为www.apple.com:443
+      - SERVERNAMES=www.apple.com images.apple.com # 服务器名称，默认为www.apple.com images.apple.com
+    volumes:
+      - .:/config       # 保存配置信息
+    networks:
+      - reality-network
+
+networks:
+  reality-network:
+    driver: bridge
