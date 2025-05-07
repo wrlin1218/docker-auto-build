@@ -16,6 +16,7 @@ WORKDIR /reality
 
 ENV DEST="" \
     SERVERNAMES="" \
+    EXTERNAL_PORT="" \
     TZ=Asia/Shanghai
 
 COPY ./entrypoint.sh /
@@ -28,5 +29,4 @@ RUN apk add --no-cache tzdata ca-certificates jq curl libqrencode-tools && \
     wget -O /geoip.dat https://github.com/v2fly/geoip/releases/latest/download/geoip.dat && \
     chmod +x /entrypoint.sh
 
-EXPOSE 443
 ENTRYPOINT ["/entrypoint.sh"]

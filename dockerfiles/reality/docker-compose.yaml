@@ -12,6 +12,7 @@ services:
     environment:
       - DEST=www.apple.com:443 # 目标站点，默认为www.apple.com:443
       - SERVERNAMES=www.apple.com images.apple.com # 服务器名称，默认为www.apple.com images.apple.com
+      - EXTERNAL_PORT=38443 # 外部端口，默认为443,需要和外部映射端口一致
     volumes:
       - .:/config       # 保存配置信息
     networks:

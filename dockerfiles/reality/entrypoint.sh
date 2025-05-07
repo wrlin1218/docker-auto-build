@@ -10,7 +10,10 @@ else
   echo "UUID: $UUID"
 
   # 设置默认端口
-  EXTERNAL_PORT=443
+  if [ -z "$EXTERNAL_PORT" ]; then
+    echo "EXTERNAL_PORT is not set. default value 443"
+    EXTERNAL_PORT="443"
+  fi
 
   # 设置DEST默认值
   if [ -z "$DEST" ]; then
