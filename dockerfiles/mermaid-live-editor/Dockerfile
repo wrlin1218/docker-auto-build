@@ -7,9 +7,8 @@ RUN corepack enable pnpm
 
 WORKDIR /mermaid-live-editor
 
-COPY ./repo/ .
-COPY ./package.json .
-COPY ./pnpm-lock.yaml .
+COPY ./repo/package.json .
+COPY ./repo/pnpm-lock.yaml .
 
 RUN pnpm install
 
@@ -24,7 +23,6 @@ ARG MERMAID_IS_ENABLED_MERMAID_CHART_LINKS
 WORKDIR /mermaid-live-editor
 
 COPY ./repo/ .
-COPY . ./
 
 RUN pnpm build
 
@@ -33,12 +31,12 @@ FROM mermaid-live-editor-builder AS mermaid-dev
 WORKDIR /mermaid-live-editor
 
 COPY ./repo/ .
+
 ENTRYPOINT ["pnpm", "dev"]
 
 FROM nginx:1.28-alpine3.21 AS mermaid
 
 WORKDIR /mermaid-live-editor
 
-COPY ./repo/ .
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+COPY ./repo/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=mermaid-live-editor-builder /app/docs /usr/share/nginx/html
