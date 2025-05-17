@@ -1,0 +1,5 @@
+services:
+  mermaid:
+    image: ghcr.io/mermaid-js/mermaid-live-editor
+    ports:
+      - 18090:8080

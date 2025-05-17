@@ -8,3 +8,7 @@ repositories:
   - name: reality
     repo_url: https://github.com/XTLS/Xray-core.git
     branch: main
+
+  - name: mermaid-live-editor
+    repo_url: https://github.com/mermaid-js/mermaid-live-editor.git
+    branch: develop
