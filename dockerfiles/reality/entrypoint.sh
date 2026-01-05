@@ -1,7 +1,16 @@
 #!/bin/sh
-if [ -f /config/config_info.txt ]; then
-  echo "config_info.txt exist"
+# Check if runtime config exists
+if [ -f /config/config_runtime.json ]; then
+  echo "Found existing config_runtime.json, using it."
+  cp /config/config_runtime.json /config.json
+  # Also print the info if available
+  if [ -f /config/config_info.txt ]; then
+    cat /config/config_info.txt
+  fi
 else
+  # No runtime config, start fresh initialization
+  echo "No existing config found. Starting initialization..."
+  
   IPV6=$(curl -6 -sSL --connect-timeout 3 --retry 2  ip.sb || echo "null")
   IPV4=$(curl -4 -sSL --connect-timeout 3 --retry 2  ip.sb || echo "null")
   
@@ -30,8 +39,9 @@ else
   # 自动生成密钥对
   echo "Generating new key pair"
   /xray x25519 >/key
-  PRIVATEKEY=$(cat /key | grep "Private" | awk -F ': ' '{print $2}')
-  PUBLICKEY=$(cat /key | grep "Public" | awk -F ': ' '{print $2}')
+  # 新版 xray 输出格式: PrivateKey / Password (客户端公钥) / Hash32
+  PRIVATEKEY=$(cat /key | grep "PrivateKey" | awk -F ': ' '{print $2}')
+  PUBLICKEY=$(cat /key | grep "Password" | awk -F ': ' '{print $2}')
   echo "Private key: $PRIVATEKEY"
   echo "Public key: $PUBLICKEY"
 
@@ -73,10 +83,14 @@ else
   fi
 
   echo -e "\033[0m" >>/config/config_info.txt
-fi
+  
+  # Show config info
+  cat /config/config_info.txt
 
-# 显示配置信息
-cat /config/config_info.txt
+  # Save the generated config for persistence
+  echo "Persisting configuration to /config/config_runtime.json"
+  cp /config.json /config/config_runtime.json
+fi
 
 # 运行xray
 exec /xray -config /config.json
