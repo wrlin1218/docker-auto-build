@@ -12,3 +12,8 @@ repositories:
   - name: mermaid-live-editor
     repo_url: https://github.com/mermaid-js/mermaid-live-editor.git
     branch: develop
+
+  - name: qwerty-learner
+    repo_url: https://github.com/RealKai42/qwerty-learner.git
+    branch: main
+    
